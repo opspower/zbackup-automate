@@ -38,7 +38,7 @@ type pg struct {
 var singletonInstance *pg
 var once sync.Once
 
-// GetInstance returns the signleton instance. Will be nil if not yet initialized.
+// GetInstance returns the singleton instance. Will be nil if not yet initialized.
 func GetInstance() *pg {
 	return singletonInstance
 }
@@ -253,7 +253,7 @@ func (p *pg) DeletePolicy(ctx context.Context, id string) error {
 	return nil
 }
 
-func (p *pg) UpdatePolicy(ctx context.Context, pol *v2.Policy, checkProjects bool) (*v2.Policy, error) {
+func (p *pg) UpdatePolicy(ctx context.Context, pol *v2.Policy) (*v2.Policy, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -263,29 +263,27 @@ func (p *pg) UpdatePolicy(ctx context.Context, pol *v2.Policy, checkProjects boo
 	}
 
 	// Project filtering handled in here. We'll return a 404 right away if we can't find
-	// the policy via ID as filtered by projects. Also locks relevant rows if in v2.1 mode
+	// the policy via ID as filtered by projects. Also locks relevant rows
 	// so we can check project assignment permissions without them being changed under us.
-	oldPolicy, err := p.queryPolicy(ctx, pol.ID, tx, checkProjects)
+	oldPolicy, err := p.queryPolicy(ctx, pol.ID, tx, true)
 	if err != nil {
 		return nil, p.processError(err)
 	}
 
 	newProjects := pol.Projects
-	if checkProjects {
-		err = p.ensureNoProjectsMissingWithQuerier(ctx, tx, newProjects)
-		if err != nil {
-			return nil, p.processError(err)
-		}
+	err = p.ensureNoProjectsMissingWithQuerier(ctx, tx, newProjects)
+	if err != nil {
+		return nil, p.processError(err)
+	}
 
-		err = projectassignment.AuthorizeProjectAssignment(ctx,
-			p.engine,
-			auth_context.FromContext(auth_context.FromIncomingMetadata(ctx)).Subjects,
-			oldPolicy.Projects,
-			newProjects,
-			true)
-		if err != nil {
-			return nil, p.processError(err)
-		}
+	err = projectassignment.AuthorizeProjectAssignment(ctx,
+		p.engine,
+		auth_context.FromContext(auth_context.FromIncomingMetadata(ctx)).Subjects,
+		oldPolicy.Projects,
+		newProjects,
+		true)
+	if err != nil {
+		return nil, p.processError(err)
 	}
 
 	// Since we are forcing users to update the entire policy, we should delete
@@ -856,7 +854,7 @@ func (p *pg) DeleteRole(ctx context.Context, id string) error {
 	return nil
 }
 
-func (p *pg) UpdateRole(ctx context.Context, role *v2.Role, checkProjects bool) (*v2.Role, error) {
+func (p *pg) UpdateRole(ctx context.Context, role *v2.Role) (*v2.Role, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -879,34 +877,32 @@ func (p *pg) UpdateRole(ctx context.Context, role *v2.Role, checkProjects bool) 
 	}
 
 	newProjects := role.Projects
-	if checkProjects {
-		var oldRole v2.Role
-		// get the old role and lock the role for updates (still readable)
-		// until the update completes or the transaction fails so that
-		// the project diff doesn't change under us while we perform permission checks.
-		row := tx.QueryRowContext(ctx, `SELECT query_role($1) FOR UPDATE;`, role.ID)
-		err = row.Scan(&oldRole)
-		if err != nil {
-			return nil, p.processError(err)
-		}
-
-		err = p.ensureNoProjectsMissingWithQuerier(ctx, tx, newProjects)
-		if err != nil {
-			return nil, p.processError(err)
-		}
-
-		err = projectassignment.AuthorizeProjectAssignment(ctx,
-			p.engine,
-			auth_context.FromContext(auth_context.FromIncomingMetadata(ctx)).Subjects,
-			oldRole.Projects,
-			newProjects,
-			true)
-		if err != nil {
-			return nil, p.processError(err)
-		}
+	var oldRole v2.Role
+	// get the old role and lock the role for updates (still readable)
+	// until the update completes or the transaction fails so that
+	// the project diff doesn't change under us while we perform permission checks.
+	row := tx.QueryRowContext(ctx, `SELECT query_role($1) FOR UPDATE;`, role.ID)
+	err = row.Scan(&oldRole)
+	if err != nil {
+		return nil, p.processError(err)
 	}
 
-	row := tx.QueryRowContext(ctx,
+	err = p.ensureNoProjectsMissingWithQuerier(ctx, tx, newProjects)
+	if err != nil {
+		return nil, p.processError(err)
+	}
+
+	err = projectassignment.AuthorizeProjectAssignment(ctx,
+		p.engine,
+		auth_context.FromContext(auth_context.FromIncomingMetadata(ctx)).Subjects,
+		oldRole.Projects,
+		newProjects,
+		true)
+	if err != nil {
+		return nil, p.processError(err)
+	}
+
+	row = tx.QueryRowContext(ctx,
 		`UPDATE iam_roles SET (name, actions) =
 			($2, $3) WHERE id = $1 RETURNING db_id`,
 		role.ID, role.Name, pq.Array(role.Actions),

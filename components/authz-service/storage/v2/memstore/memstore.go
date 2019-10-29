@@ -148,7 +148,7 @@ func (s *State) AddPolicyMembers(
 	return pol.Members, nil
 }
 
-func (s *State) UpdatePolicy(_ context.Context, p *storage.Policy, checkProjects bool) (*storage.Policy, error) {
+func (s *State) UpdatePolicy(_ context.Context, p *storage.Policy) (*storage.Policy, error) {
 	item, exists := s.policies.Get(p.ID)
 	if !exists {
 		return nil, storage_errors.ErrNotFound
@@ -513,7 +513,7 @@ func (s *State) DeleteRole(ctx context.Context, roleID string) error {
 	return nil
 }
 
-func (s *State) UpdateRole(_ context.Context, r *storage.Role, checkProjects bool) (*storage.Role, error) {
+func (s *State) UpdateRole(_ context.Context, r *storage.Role) (*storage.Role, error) {
 	item, exists := s.roles.Get(r.ID)
 	if !exists {
 		return nil, storage_errors.ErrNotFound
