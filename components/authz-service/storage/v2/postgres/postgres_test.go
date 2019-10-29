@@ -2531,7 +2531,7 @@ func TestUpdatePolicy(t *testing.T) {
 				Members: []storage.Member{member},
 			}
 			assertNoPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				assert.Error(t, err)
 				assert.Equal(t, storage_errors.ErrNotFound, err)
 				assert.Nil(t, resp)
@@ -2554,7 +2554,7 @@ func TestUpdatePolicy(t *testing.T) {
 				Members: []storage.Member{member},
 			}
 			assertNoPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				assert.Error(t, err)
 				assert.Equal(t, storage_errors.ErrNotFound, err)
 				assert.Nil(t, resp)
@@ -2575,7 +2575,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.Equal(t, &pol, resp)
 			})
@@ -2602,7 +2602,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertNoPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, true)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				assert.Error(t, err)
 				assert.Empty(t, resp)
 				_, correctError := err.(*projectassignment.ProjectsMissingError)
@@ -2628,7 +2628,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.Equal(t, &pol, resp)
 			})
@@ -2665,7 +2665,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.Equal(t, &pol, resp)
 			})
@@ -2704,7 +2704,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.Equal(t, &pol, resp)
 			})
@@ -2750,7 +2750,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.Equal(t, &pol, resp)
 			})
@@ -2795,7 +2795,7 @@ func TestUpdatePolicy(t *testing.T) {
 			assertEmpty(t, db.QueryRow(`SELECT count(*) FROM iam_statement_projects WHERE project_id=project_db_id($1)`, projID))
 
 			assertNoPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.Error(t, err)
 				assert.Nil(t, resp)
 			})
@@ -2826,7 +2826,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.ElementsMatch(t, []string{projID}, resp.Projects)
 			})
@@ -2854,7 +2854,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.ElementsMatch(t, expProjs, resp.Projects)
 			})
@@ -2888,7 +2888,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.Equal(t, expProjs, resp.Projects)
 			})
@@ -2921,7 +2921,7 @@ func TestUpdatePolicy(t *testing.T) {
 
 			expProjs := []string{projID2}
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.ElementsMatch(t, expProjs, resp.Projects)
 			})
@@ -2954,7 +2954,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.Equal(t, expProjs, resp.Projects)
 			})
@@ -2984,7 +2984,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 
 			assertNoPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				assert.Error(t, err)
 				assert.Nil(t, resp)
 			})
@@ -3011,7 +3011,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 			ctx = insertProjectsIntoContext(ctx, []string{projID1})
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.Equal(t, &pol, resp)
 			})
@@ -3033,7 +3033,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 			ctx = insertProjectsIntoContext(ctx, []string{v2.AllProjectsExternalID})
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.Equal(t, &pol, resp)
 			})
@@ -3053,7 +3053,7 @@ func TestUpdatePolicy(t *testing.T) {
 			projID1 := "team-rocket"
 			ctx = insertProjectsIntoContext(ctx, []string{projID1, v2.UnassignedProjectID})
 			assertPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				require.NoError(t, err)
 				assert.Equal(t, &pol, resp)
 			})
@@ -3078,7 +3078,7 @@ func TestUpdatePolicy(t *testing.T) {
 			}
 			ctx = insertProjectsIntoContext(ctx, []string{projID2, v2.UnassignedProjectID})
 			assertNoPolicyChange(t, store, func() {
-				resp, err := store.UpdatePolicy(ctx, &pol, false)
+				resp, err := store.UpdatePolicy(ctx, &pol)
 				assert.Nil(t, resp)
 				assert.Equal(t, storage_errors.ErrNotFound, err)
 			})
@@ -6107,7 +6107,7 @@ func TestUpdateRole(t *testing.T) {
 	cases := map[string]func(*testing.T){
 		"returns role not found error with empty database": func(t *testing.T) {
 			ctx := context.Background()
-			role, err := store.UpdateRole(ctx, &nonexistingRole, false)
+			role, err := store.UpdateRole(ctx, &nonexistingRole)
 
 			assert.Nil(t, role)
 			assert.Error(t, err)
@@ -6120,7 +6120,7 @@ func TestUpdateRole(t *testing.T) {
 			insertTestRole(t, db, "my-id-3", "name", []string{"action3"}, []string{})
 			insertTestRole(t, db, "my-id-4", "name", []string{"action4"}, []string{})
 
-			role, err := store.UpdateRole(ctx, &nonexistingRole, false)
+			role, err := store.UpdateRole(ctx, &nonexistingRole)
 
 			assert.Nil(t, role)
 			assert.Error(t, err)
@@ -6136,7 +6136,7 @@ func TestUpdateRole(t *testing.T) {
 				Projects: []string{},
 			}
 
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			require.NoError(t, err)
 			assert.Equal(t, dbRole.ID, updatedRole.ID)
@@ -6163,7 +6163,7 @@ func TestUpdateRole(t *testing.T) {
 				Projects: []string{project1.ID},
 			}
 
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			require.NoError(t, err)
 			assert.Equal(t, dbRole.ID, updatedRole.ID)
@@ -6214,7 +6214,7 @@ func TestUpdateRole(t *testing.T) {
 				Projects: []string{project2.ID, project3.ID, project4.ID},
 			}
 
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			require.NoError(t, err)
 			assert.Equal(t, dbRole.ID, updatedRole.ID)
@@ -6249,7 +6249,7 @@ func TestUpdateRole(t *testing.T) {
 				Projects: []string{},
 			}
 
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			require.NoError(t, err)
 			assert.Equal(t, dbRole.ID, updatedRole.ID)
@@ -6285,7 +6285,7 @@ func TestUpdateRole(t *testing.T) {
 				Projects: []string{project2.ID},
 			}
 			ctx = insertProjectsIntoContext(ctx, []string{project1.ID})
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			assert.Nil(t, updatedRole)
 			assert.Equal(t, storage_errors.ErrNotFound, err)
@@ -6325,7 +6325,7 @@ func TestUpdateRole(t *testing.T) {
 				Projects: []string{project2.ID},
 			}
 			ctx = insertProjectsIntoContext(ctx, []string{project2.ID, project1.ID})
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			require.NoError(t, err)
 			assert.Equal(t, dbRole.ID, updatedRole.ID)
@@ -6353,7 +6353,7 @@ func TestUpdateRole(t *testing.T) {
 				Projects: []string{project1.ID},
 			}
 			ctx = insertProjectsIntoContext(ctx, []string{v2.AllProjectsExternalID})
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			require.NoError(t, err)
 			assert.Equal(t, dbRole.ID, updatedRole.ID)
@@ -6374,7 +6374,7 @@ func TestUpdateRole(t *testing.T) {
 				Projects: []string{},
 			}
 			ctx = insertProjectsIntoContext(ctx, []string{v2.UnassignedProjectID})
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			require.NoError(t, err)
 			assert.Equal(t, dbRole.ID, updatedRole.ID)
@@ -6409,7 +6409,7 @@ func TestUpdateRole(t *testing.T) {
 				Projects: []string{project1.ID, project2.ID},
 			}
 
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			require.NoError(t, err)
 			assert.Equal(t, dbRole.ID, updatedRole.ID)
@@ -6427,7 +6427,7 @@ func TestUpdateRole(t *testing.T) {
 				Actions: dbRole.Actions,
 			}
 
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			require.NoError(t, err)
 			assert.Equal(t, dbRole.ID, updatedRole.ID)
@@ -6445,7 +6445,7 @@ func TestUpdateRole(t *testing.T) {
 				Actions: []string{"newaction"},
 			}
 
-			updatedRole, err := store.UpdateRole(ctx, &r, false)
+			updatedRole, err := store.UpdateRole(ctx, &r)
 
 			require.NoError(t, err)
 			assert.Equal(t, dbRole.ID, updatedRole.ID)
