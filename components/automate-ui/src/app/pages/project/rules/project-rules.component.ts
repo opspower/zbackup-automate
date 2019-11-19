@@ -2,8 +2,8 @@ import { Component, OnInit, OnDestroy, EventEmitter } from '@angular/core';
 import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Subject, combineLatest } from 'rxjs';
-import { takeUntil, pluck, filter } from 'rxjs/operators';
+import { Subject, combineLatest, Observable } from 'rxjs';
+import { takeUntil, pluck, filter, map } from 'rxjs/operators';
 import { identity, isNil } from 'lodash/fp';
 
 import { NgrxStateAtom } from 'app/ngrx.reducers';
@@ -46,7 +46,7 @@ export class ProjectRulesComponent implements OnInit, OnDestroy {
   public project: Project = <Project>{};
   public rule: Rule = <Rule>{};
 
-  public isLoading = true;
+  public isLoading$: Observable<boolean>;
   public saving = false;
   public attributeList: KVPair;
   public attributes: RuleTypeMappedObject;
@@ -76,19 +76,19 @@ export class ProjectRulesComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private fb: FormBuilder) {
 
-    combineLatest([
+    this.isLoading$ = combineLatest([
       this.store.select(getStatus),
       this.store.select(updateStatus),
       this.store.select(getProjectStatus)
     ]).pipe(
-      takeUntil(this.isDestroyed)
-    ).subscribe(([gStatus, uStatus, gpStatus]) => {
-      const routeId = this.route.snapshot.paramMap.get('ruleid');
-      this.isLoading = routeId &&
-        (gStatus !== EntityStatus.loadingSuccess) ||
-        (uStatus === EntityStatus.loading) ||
-        (gpStatus !== EntityStatus.loadingSuccess);
-      });
+      map(([gStatus, uStatus, gpStatus]) => {
+        const routeId = this.route.snapshot.paramMap.get('ruleid');
+        return  routeId &&
+         (gStatus !== EntityStatus.loadingSuccess) ||
+         (uStatus === EntityStatus.loading) ||
+         (gpStatus !== EntityStatus.loadingSuccess);
+      })
+    );
 
     combineLatest([
       this.store.select(routeParams).pipe(pluck('id'), filter(identity)),
