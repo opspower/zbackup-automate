@@ -14,7 +14,6 @@ import { MenuItemGroup } from './layout.model';
     providedIn: 'root'
 })
 export class LayoutSidebarService {
-    public applicationsFeatureFlagOn: boolean;
     public isIAMv2$: Observable<boolean>;
     public ServiceNowfeatureFlagOn: boolean;
     private workflowEnabled: boolean;
@@ -26,7 +25,6 @@ export class LayoutSidebarService {
         private featureFlagsService: FeatureFlagsService
     ) {
         this.isIAMv2$ = this.store.select(isIAMv2);
-        this.applicationsFeatureFlagOn = this.featureFlagsService.getFeatureStatus('applications');
         this.ServiceNowfeatureFlagOn = this.featureFlagsService.getFeatureStatus('servicenow_cmdb');
         this.clientRunsStore.select(clientRunsWorkflowEnabled).subscribe(
             (workflowEnabled) => this.workflowEnabled = workflowEnabled
@@ -59,7 +57,7 @@ export class LayoutSidebarService {
                     visible: true
                 }
             ],
-            visible: this.applicationsFeatureFlagOn
+            visible: true
         }];
     }
 
