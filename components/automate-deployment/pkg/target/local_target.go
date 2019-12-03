@@ -39,13 +39,14 @@ import (
 // LocalTarget struct
 type LocalTarget struct {
 	HabCmd
-	Executor    command.Executor
-	HabClient   *habapi.Client
-	habSup      HabSup
-	offlineMode bool
-	HabBaseDir  string
-	HabBackoff  time.Duration
+	Executor   command.Executor
+	HabClient  *habapi.Client
+	habSup     HabSup
+	HabBaseDir string
+	HabBackoff time.Duration
 }
+
+const HabitatInstallScriptURL = "https://raw.githubusercontent.com/habitat-sh/habitat/master/components/hab/install.sh"
 
 var (
 	defaultHabBackoff  = 500 * time.Millisecond
@@ -79,7 +80,6 @@ Restart = on-failure
 LimitNOFILE = 65536
 LimitMEMLOCK=infinity
 UMask = 0022
-TasksMax = 8192
 Environment = "HAB_LICENSE=accept-no-persist"
 Environment = "HAB_SUP_BINARY=%s"
 Environment = "HAB_LAUNCH_BINARY=%s"
@@ -89,9 +89,20 @@ Environment = "HAB_LAUNCH_BINARY=%s"
 WantedBy = default.target
 `
 
-// This interfaces is used to allow us to inject a mock in the unit
-// tests.
+// The following interfaces are used to allow us to inject mock versions of these
+// in the unit tests.
+var defaultTempFileProvider tempFileProvider = &ioutilTempFileProvider{}
 var defaultUserLookupProvider userLookupProvider = &osUserLookupProvider{}
+
+type tempFileProvider interface {
+	TempFile(string, string) (*os.File, error)
+}
+
+type ioutilTempFileProvider struct{}
+
+func (p *ioutilTempFileProvider) TempFile(dir string, prefix string) (*os.File, error) {
+	return ioutil.TempFile(dir, prefix)
+}
 
 type userLookupProvider interface {
 	Lookup(username string) (*user.User, error)
@@ -119,17 +130,13 @@ func NewLocalTarget(offlineMode bool) *LocalTarget {
 	// TODO(ssd) 2018-01-25: Make at least the port configurable
 	client := habapi.New("http://127.0.0.1:9631")
 	habSup := LocalHabSup(client)
-	habCmdOptions := DefaultHabCmdOptions()
-	habCmdOptions.OfflineMode = offlineMode
-
 	return &LocalTarget{
-		HabCmd:      NewHabCmd(c, habCmdOptions),
-		HabBaseDir:  defaultHabDir,
-		HabClient:   client,
-		offlineMode: offlineMode,
-		habSup:      habSup,
-		HabBackoff:  defaultHabBackoff,
-		Executor:    c,
+		HabCmd:     NewHabCmd(c, offlineMode),
+		HabBaseDir: defaultHabDir,
+		HabClient:  client,
+		habSup:     habSup,
+		HabBackoff: defaultHabBackoff,
+		Executor:   c,
 	}
 }
 
@@ -178,13 +185,6 @@ func (t *LocalTarget) InstallHabitat(ctx context.Context, m manifest.ReleaseMani
 		if err != nil {
 			return err
 		}
-	}
-
-	output, err := t.HabCmd.BinlinkPackage(ctx, &requiredVersion, "hab")
-	if err != nil {
-		ident := habpkg.Ident(&requiredVersion)
-		logrus.Debugf("Binlink of %s failed with output: %s", ident, output)
-		logrus.Warnf("Could not binlink %q, some hab commands may not work", ident)
 	}
 
 	return nil
@@ -1302,7 +1302,16 @@ func (t *LocalTarget) habBinaryInstalled(ctx context.Context) bool {
 }
 
 func (t *LocalTarget) installHabViaHab(ctx context.Context, requiredVersion habpkg.HabPkg) error {
-	return t.installPackage(ctx, &requiredVersion, "")
+	if err := t.installPackage(ctx, &requiredVersion, ""); err != nil {
+		return err
+	}
+	output, err := t.HabCmd.BinlinkPackage(ctx, &requiredVersion, "hab")
+	if err != nil {
+		ident := habpkg.Ident(&requiredVersion)
+		logrus.Debugf("Binlink of %s failed with output: %s", ident, output)
+		logrus.Warnf("Could not binlink %q, some hab commands may not work", ident)
+	}
+	return nil
 }
 
 func (t *LocalTarget) installHabViaBin(ctx context.Context, requiredVersion habpkg.HabPkg) error {
@@ -1323,14 +1332,18 @@ func (t *LocalTarget) installHabViaBin(ctx context.Context, requiredVersion habp
 	if err := f.Close(); err != nil {
 		return err
 	}
-	defer os.Remove(binPath)
+	oldPath := os.Getenv("PATH")
+	if err := os.Setenv("PATH", fmt.Sprintf("%s:%s", path.Dir(binPath), oldPath)); err != nil {
+		return err
+	}
+	defer os.Setenv("PATH", oldPath) // nolint: errcheck
 
-	opts := DefaultHabCmdOptions()
-	opts.HabBinary = binPath
-	hc := NewHabCmd(t.Executor, opts)
-	output, err := hc.InstallPackage(ctx, &requiredVersion, "")
-	if err != nil {
-		return errors.Wrapf(err, "failed to install hab; output=%s", output)
+	if err := t.installHabViaHab(ctx, requiredVersion); err != nil {
+		return err
+	}
+
+	if _, err := t.HabCmd.BinlinkPackage(ctx, &requiredVersion, "hab"); err != nil {
+		return err
 	}
 	return nil
 }
