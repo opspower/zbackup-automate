@@ -8,10 +8,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
-	"net/http"
 	"os"
 	"os/user"
 	"path"
@@ -24,6 +22,7 @@ import (
 
 	dc "github.com/chef/automate/api/config/deployment"
 	api "github.com/chef/automate/api/interservice/deployment"
+	"github.com/chef/automate/components/automate-deployment/pkg/airgap"
 	"github.com/chef/automate/components/automate-deployment/pkg/bootstrapbundle"
 	"github.com/chef/automate/components/automate-deployment/pkg/cli"
 	"github.com/chef/automate/components/automate-deployment/pkg/depot"
@@ -183,7 +182,7 @@ func (t *LocalTarget) InstallHabitat(ctx context.Context, m manifest.ReleaseMani
 			return err
 		}
 	} else {
-		err := t.installHabViaInstallScript(ctx, &requiredVersion)
+		err := t.installHabViaBin(ctx, requiredVersion)
 		if err != nil {
 			return err
 		}
@@ -1305,26 +1304,6 @@ func (t *LocalTarget) waitForHabSupToStart(ctx context.Context, releaseManifest 
 	}
 }
 
-func downloadInstallScript() (*os.File, error) {
-	file, err := defaultTempFileProvider.TempFile("", "")
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	resp, err := http.Get(HabitatInstallScriptURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return file, nil
-}
-
 func (t *LocalTarget) habBinaryInstalled(ctx context.Context) bool {
 	_, err := t.Executor.CombinedOutput("bash", command.Args("-c", "command -v hab"), command.Context(ctx))
 	return err == nil
@@ -1334,45 +1313,31 @@ func (t *LocalTarget) installHabViaHab(ctx context.Context, requiredVersion habp
 	return t.installPackage(ctx, &requiredVersion, "")
 }
 
-func (t *LocalTarget) installHabViaInstallScript(ctx context.Context, requiredVersion habpkg.VersionedArtifact) error {
-	script, downloadErr := downloadInstallScript()
-	if downloadErr != nil {
-		return downloadErr
-	}
-	defer os.Remove(script.Name())
-
+func (t *LocalTarget) installHabViaBin(ctx context.Context, requiredVersion habpkg.HabPkg) error {
 	if err := os.MkdirAll(t.habTmpDir(), os.ModePerm); err != nil {
 		return err
 	}
 
-	// TODO(ssd) 2019-12-03: HACK until we remove the use of install.sh
-	lastBintrayVersion := "0.89.0"
-	targetVersion, err := habpkg.ParseSemverishVersion(requiredVersion.Version())
+	dler := airgap.NewNetHabDownloader()
+	binPath := path.Join(t.habTmpDir(), "hab")
+	f, err := os.OpenFile(binPath, os.O_RDWR|os.O_CREATE, 0700)
 	if err != nil {
 		return err
 	}
-
-	switchoverVersion, err := habpkg.ParseSemverishVersion(lastBintrayVersion)
-	if err != nil {
+	defer f.Close() // nolint: errcheck
+	if err := dler.DownloadHabBinary(requiredVersion.Version(), requiredVersion.Release(), f); err != nil {
 		return err
 	}
-
-	version := requiredVersion.Version()
-	if habpkg.CompareSemverish(targetVersion, switchoverVersion) != habpkg.SemverishGreater {
-		version = habpkg.VersionString(requiredVersion)
+	if err := f.Close(); err != nil {
+		return err
 	}
-
-	output, execErr := t.Executor.CombinedOutput(
-		"bash",
-		command.Args(script.Name(), "-v", version),
-		command.Envvar("TMPDIR", t.habTmpDir()),
-		command.Context(ctx),
-	)
-	if execErr != nil {
-		return errors.Wrapf(execErr, "Habitat install failed\nOUTPUT:\n%s", output)
+	oldPath := os.Getenv("PATH")
+	if err := os.Setenv("PATH", fmt.Sprintf("%s:%s", path.Dir(binPath), oldPath)); err != nil {
+		return err
 	}
+	defer os.Setenv("PATH", oldPath) // nolint: errcheck
 
-	return nil
+	return t.installHabViaHab(ctx, requiredVersion)
 }
 
 func (t *LocalTarget) installHabComponents(ctx context.Context, releaseManifest manifest.ReleaseManifest, writer cli.BodyWriter) error {
