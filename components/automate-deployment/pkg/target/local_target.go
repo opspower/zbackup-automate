@@ -39,12 +39,13 @@ import (
 // LocalTarget struct
 type LocalTarget struct {
 	HabCmd
-	Executor    command.Executor
-	HabClient   *habapi.Client
-	habSup      HabSup
-	offlineMode bool
-	HabBaseDir  string
-	HabBackoff  time.Duration
+	Executor            command.Executor
+	HabClient           *habapi.Client
+	habSup              HabSup
+	offlineMode         bool
+	HabBaseDir          string
+	HabBackoff          time.Duration
+	habBinaryDownloader airgap.HabBinaryDownloader
 }
 
 var (
@@ -123,13 +124,14 @@ func NewLocalTarget(offlineMode bool) *LocalTarget {
 	habCmdOptions.OfflineMode = offlineMode
 
 	return &LocalTarget{
-		HabCmd:      NewHabCmd(c, habCmdOptions),
-		HabBaseDir:  defaultHabDir,
-		HabClient:   client,
-		offlineMode: offlineMode,
-		habSup:      habSup,
-		HabBackoff:  defaultHabBackoff,
-		Executor:    c,
+		HabCmd:              NewHabCmd(c, habCmdOptions),
+		HabBaseDir:          defaultHabDir,
+		HabClient:           client,
+		offlineMode:         offlineMode,
+		habSup:              habSup,
+		HabBackoff:          defaultHabBackoff,
+		Executor:            c,
+		habBinaryDownloader: airgap.NewNetHabDownloader(),
 	}
 }
 

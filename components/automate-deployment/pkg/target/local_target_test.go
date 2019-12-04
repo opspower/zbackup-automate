@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -92,12 +93,27 @@ func newMock(expected command.ExpectedCommand, output string, err error) execMoc
 	}
 }
 
+type habBinDownloadMock struct {
+	t *testing.T
+}
+
+func newHabitatBinaryDownloaderMock(t *testing.T) *habBinDownloadMock {
+	return &habBinDownloadMock{
+		t: t,
+	}
+}
+
+func (m *habBinDownloadMock) DownloadHabBinary(version string, release string, w io.Writer) error {
+	return nil
+}
+
 func setupTestLocalTarget(t *testing.T) (*LocalTarget, *command.MockExecutor, func(t *testing.T)) {
 	mockExec := command.NewMockExecutor(t)
 	tgt := NewLocalTarget(false)
 	tgt.Executor = mockExec
 	tgt.HabCmd = NewHabCmd(mockExec, DefaultHabCmdOptions())
 	tgt.HabBackoff = 1 * time.Millisecond
+	tgt.habBinaryDownloader = newHabitatBinaryDownloaderMock(t)
 
 	return tgt, mockExec, func(t *testing.T) {
 		mockExec.AssertAllCalled()
@@ -303,6 +319,10 @@ func TestInstallHabitat(t *testing.T) {
 	mockDownloadInstall := func(t *testing.T, mockExec *command.MockExecutor, baseDir string, installError error) {
 		habInstall := expectHabCommand(path.Join(baseDir, "tmp/hab"), "pkg", "install", "core/hab/0.54.0/20180221022026")
 		mockExec.Expect("CombinedOutput", habInstall).Return("", installError).Once()
+		if installError == nil {
+			habTmpBinlink := expectHabCommand(path.Join(baseDir, "tmp/hab"), "pkg", "binlink", "--force", "core/hab/0.54.0/20180221022026", "hab")
+			mockExec.Expect("CombinedOutput", habTmpBinlink).Return("", nil).Once()
+		}
 	}
 
 	tests := []struct {
@@ -314,7 +334,6 @@ func TestInstallHabitat(t *testing.T) {
 			func(t *testing.T, mockExec *command.MockExecutor, baseDir string) {
 				mockExec.Expect("CombinedOutput", hasHabCmd).Return("", errors.New("")).Once()
 				mockDownloadInstall(t, mockExec, baseDir, nil)
-				mockExec.Expect("CombinedOutput", habBinlink).Return("", nil).Once()
 			},
 		},
 		{"installs hab via the hab if hab is found", false,
