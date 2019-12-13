@@ -100,6 +100,9 @@ func (es *Backend) JobStatus(ctx context.Context, jobID string) (project_update_
 		estimatedEndTimeInSec = tasksGetTaskResponse.Task.StartTimeInMillis/1000 + timeLeftSec
 	}
 
+	log.Infof("PERCENT-CHECK ingest-service: %f%%, %v, Completed? %t",
+		percentageComplete*100, estimatedEndTimeInSec, tasksGetTaskResponse.Completed)
+
 	return project_update_lib.JobStatus{
 		Completed:             tasksGetTaskResponse.Completed,
 		PercentageComplete:    float32(percentageComplete),

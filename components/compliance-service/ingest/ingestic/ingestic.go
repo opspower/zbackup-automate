@@ -543,6 +543,9 @@ func (backend *ESClient) JobStatus(ctx context.Context, jobID string) (project_u
 		estimatedEndTimeInSec = tasksGetTaskResponse.Task.StartTimeInMillis/1000 + timeLeftSec
 	}
 
+	logrus.Infof("PERCENT-CHECK compliance-service: %f%%, %v, Completed? %t",
+		percentageComplete*100, estimatedEndTimeInSec, tasksGetTaskResponse.Completed)
+
 	return project_update_lib.JobStatus{
 		Completed:             tasksGetTaskResponse.Completed,
 		PercentageComplete:    float32(percentageComplete),

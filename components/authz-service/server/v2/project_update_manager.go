@@ -405,6 +405,11 @@ func (m *CerealProjectUpdateManager) Status() (ProjectUpdateStatus, error) {
 		}
 		return nil, err
 	}
+	logrus.Infof("PERCENT-CHECK project_update_manager: %f%%, %v, Completed ? %t",
+		projectUpdateInstance.PercentageComplete()*100,
+		projectUpdateInstance.EstimatedTimeComplete(),
+		!projectUpdateInstance.IsRunning(),
+	)
 	return projectUpdateInstance, nil
 }
 

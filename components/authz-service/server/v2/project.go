@@ -252,6 +252,7 @@ func (s *ProjectState) ApplyRulesStatus(
 	if err != nil {
 		return nil, err
 	}
+	s.log.Infof("PERCENT-CHECK authz:ApplyRulesStatus: %f", status.PercentageComplete()*100)
 
 	time, err := ptypes.TimestampProto(status.EstimatedTimeComplete())
 	if err != nil {
